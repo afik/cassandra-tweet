@@ -11,8 +11,11 @@ import com.datastax.driver.core.Metadata;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
+import com.datastax.driver.core.utils.UUIDs;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Scanner;
 import java.util.UUID;
 
@@ -73,16 +76,14 @@ public class SimpleClient {
             if (user != null) { 
                 String tofollow = split[1];
                 Date now = new Date();
-                SimpleDateFormat format = new SimpleDateFormat("yyyy-mm-dd HH:mm");
-                String date = format.format(now);
                 
                 session.execute(
                         "INSERT INTO friends (username, friend, since) VALUES ('"+
-                                user + "','" + tofollow + "','" + date +"');"
+                                tofollow + "','" + user + "',dateof(now()));"
                 );
                 session.execute(
                         "INSERT INTO followers (username, follower, since) VALUES ('"+
-                                user + "','" + tofollow + "','" + date +"');"
+                                tofollow + "','" + user + "',dateof(now()));"
                 );
                 System.out.println("Successfully follow " + tofollow);
             } else {
@@ -92,32 +93,51 @@ public class SimpleClient {
             //TODO : cek lagi kayanya salah deh
             if (user != null) {
                 String tweetBody = split[1];
-                UUID timeuuid = UUID.fromString(new Date().toString());
-                //TODO : bedain timeuuid & uuid
-                UUID tweetuuid = UUID.fromString("");
+                UUID timeuuid = UUIDs.timeBased();
+                UUID tweetuuid = UUIDs.timeBased();
                 session.execute(
-                        "INSERT INTO tweets (tweet_id, username, body) VALUES ('"+
-                                tweetuuid + "','" + user + "','" + tweetBody +"');"
+                        "INSERT INTO tweets (tweet_id, username, body) VALUES ("+
+                                tweetuuid + ",'" + user + "','" + tweetBody +"');"
                 );
                 session.execute(
                         "INSERT INTO userline (username, time, tweet_id) VALUES ('"+
-                                user + "','" + timeuuid + "','" + tweetuuid +"');"
+                                user + "'," + timeuuid + "," + tweetuuid +");"
                 );
                 session.execute(
                         "INSERT INTO timeline (username, time, tweet_id) VALUES ('"+
-                                user + "','" + timeuuid + "','" + tweetuuid +"');"
+                                user + "'," + timeuuid + "," + tweetuuid +");"
                 );
+                List<String> followers = new ArrayList<>();
+                ResultSet results  = session.execute(
+                    "SELECT username, follower FROM followers WHERE username = '"
+                            + user+"';");
+                for(Row row : results) {
+                    followers.add(row.getString("follower"));
+                }
+                for (String follower : followers) {
+                    session.execute(
+                            "INSERT INTO timeline (username, time, tweet_id) VALUES ('"+
+                                    follower +"'," + timeuuid + "," + tweetuuid+");"
+                    );
+                }
             } else {
                 System.out.println("Please login first");
             }
         } else if (split[0].equals("showuserline")) {
-            //TODO : cek lagi kayanya salah deh
             if (user != null) {
                 String toView = split[1];
-                ResultSet results  = session.execute(
-                    "SELECT username, body FROM tweets WHERE username = "
-                            + toView+";");
-                for(Row row : results) {
+                ResultSet tweetid = session.execute(
+                        "SELECT time, tweet_id FROM userline WHERE username ='"+
+                                toView+"'ORDER BY time DESC;");
+                List<UUID> tweetids = new ArrayList<>();
+                for (Row row : tweetid) {
+                    tweetids.add(row.getUUID("tweet_id"));
+                }
+                for (UUID id : tweetids) {
+                    ResultSet result = session.execute(
+                            "SELECT username, body FROM tweets WHERE tweet_id ="+
+                                    id+";");
+                    Row row = result.one();
                     System.out.println(row.getString("username")+" : "+
                             row.getString("body"));
                 }
@@ -125,13 +145,19 @@ public class SimpleClient {
                 System.out.println("Please login first");
             }
         } else if (split[0].equals("showtimeline")) {
-            //TODO : cek lagi kayanya salah deh
             if (user != null) {
-                ResultSet results  = session.execute(
-                    "SELECT username, body FROM tweets t JOIN timeline u ON"
-                            + "t.tweet_id=u.tweet_id WHERE t.username = "
-                            + user+";");
-                for(Row row : results) {
+                ResultSet tweetid = session.execute(
+                        "SELECT time, tweet_id FROM timeline WHERE username ='"+
+                                user+"'ORDER BY time DESC;");
+                List<UUID> tweetids = new ArrayList<>();
+                for (Row row : tweetid) {
+                    tweetids.add(row.getUUID("tweet_id"));
+                }
+                for (UUID id : tweetids) {
+                    ResultSet result = session.execute(
+                            "SELECT username, body FROM tweets WHERE tweet_id ="+
+                                    id+";");
+                    Row row = result.one();
                     System.out.println(row.getString("username")+" : "+
                             row.getString("body"));
                 }
