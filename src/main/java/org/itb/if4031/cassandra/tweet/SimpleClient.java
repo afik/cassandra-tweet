@@ -35,12 +35,12 @@ public class SimpleClient {
          .addContactPoint(node)
          .build();
         Metadata metadata = cluster.getMetadata();
-        System.out.printf("Connected to cluster: %s\n", 
+        System.out.printf("Connected to : %s\n", 
               metadata.getClusterName());
-        for ( Host host : metadata.getAllHosts() ) {
-           System.out.printf("Datacenter: %s; Host: %s; Rack: %s\n",
-              host.getDatacenter(), host.getAddress(), host.getRack());
-        }
+//        for ( Host host : metadata.getAllHosts() ) {
+//           System.out.printf("Datacenter: %s; Host: %s; Rack: %s\n",
+//              host.getDatacenter(), host.getAddress(), host.getRack());
+//        }
         session = cluster.connect("afik");
     }
     
@@ -53,29 +53,40 @@ public class SimpleClient {
         boolean exit = false;
         String split[] = command.split(" ",2);
         
-        if (split[0].equals("register")) {
-            String username = split[1].split(" ")[0];
-            String password = split[1].split(" ")[1];
-            session.execute(
-                    "INSERT INTO users (username, password) VALUES ('"+
-                            username +"','"+password+"');"
-            );
-            System.out.println(username + " successfully registered");
-        } else if (split[0].equals("login")) {
-            String username = split[1].split(" ")[0];
-            String password = split[1].split(" ")[1];
-            ResultSet results  = session.execute(
-                    "SELECT username, password FROM users WHERE username = '" + username+"';");
-            if(results.one().getString("password").equals(password)) {
-                user = username;
-                System.out.println("Hello, " + user + " !");
-            } else {
-                System.out.println("Wrong password");
+        if (split[0].equals("register") && split.length == 2) {
+            String s[] = split[1].split(" ");
+            if(s.length == 2){
+                String username = split[1].split(" ")[0];
+                String password = split[1].split(" ")[1];
+                session.execute(
+                        "INSERT INTO users (username, password) VALUES ('"+
+                                username +"','"+password+"');"
+                );
+                System.out.println(username + " successfully registered");
             }
-        } else if (split[0].equals("follow")) {
+            else{
+                System.out.println("Usage : register <username> <password>");
+            }
+        } else if (split[0].equals("login") && split.length == 2) {
+            String s[] = split[1].split(" ");
+            if(s.length == 2){
+                String username = split[1].split(" ")[0];
+                String password = split[1].split(" ")[1];
+                ResultSet results  = session.execute(
+                        "SELECT username, password FROM users WHERE username = '" + username+"';");
+                if(results.one().getString("password").equals(password)) {
+                    user = username;
+                    System.out.println("Hello, " + user + " !");
+                } else {
+                    System.out.println("Wrong password");
+                }
+            }
+            else{
+                System.out.println("Usage : login <username> <password>");
+            }
+        } else if (split[0].equals("follow") && split.length == 2) {
             if (user != null) { 
                 String tofollow = split[1];
-                Date now = new Date();
                 
                 session.execute(
                         "INSERT INTO friends (username, friend, since) VALUES ('"+
@@ -89,8 +100,7 @@ public class SimpleClient {
             } else {
                 System.out.println("Please login first");
             }
-        } else if (split[0].equals("tweet")) {
-            //TODO : cek lagi kayanya salah deh
+        } else if (split[0].equals("tweet") && split.length == 2) {
             if (user != null) {
                 String tweetBody = split[1];
                 UUID timeuuid = UUIDs.timeBased();
@@ -123,7 +133,7 @@ public class SimpleClient {
             } else {
                 System.out.println("Please login first");
             }
-        } else if (split[0].equals("showuserline")) {
+        } else if (split[0].equals("showuserline") && split.length == 2) {
             if (user != null) {
                 String toView = split[1];
                 ResultSet tweetid = session.execute(
