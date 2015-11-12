@@ -16,5 +16,5 @@
 5. `showuserline <username>` : show all tweet of username
 6. `showtimeline` : show timeline
 7. `exit`
-####Note : You should login to perform command number 3-6.
+<br>Note : You should login to perform command number 3-6.
 
