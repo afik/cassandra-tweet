@@ -5,8 +5,9 @@
 - 13512077 Khoirunnisa Afifah
 
 ### How to run 
-1. mvn clean install
-2. run jar file with `java -jar cassandra-tweet-1.0.jar`
+1. unzip this file into a folder
+2. mvn clean install
+3. run maven project with command `mvn exec:java`
 
 ### Available command 
 1. `register <username> <password>` : register new user
