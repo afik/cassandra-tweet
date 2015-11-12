@@ -11,6 +11,7 @@ import com.datastax.driver.core.Metadata;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Scanner;
 import java.util.UUID;
@@ -37,7 +38,7 @@ public class SimpleClient {
            System.out.printf("Datacenter: %s; Host: %s; Rack: %s\n",
               host.getDatacenter(), host.getAddress(), host.getRack());
         }
-        session = cluster.connect();
+        session = cluster.connect("afik");
     }
     
     public void close() {
@@ -46,23 +47,25 @@ public class SimpleClient {
     }
     
     public boolean handleCommand(String command) {
-        boolean stat = true;
+        boolean exit = false;
         String split[] = command.split(" ",2);
         
         if (split[0].equals("register")) {
             String username = split[1].split(" ")[0];
             String password = split[1].split(" ")[1];
             session.execute(
-                    "INSERT INTO users (username, password) VALUES ("+
-                            username +","+password+")"
+                    "INSERT INTO users (username, password) VALUES ('"+
+                            username +"','"+password+"');"
             );
+            System.out.println(username + " successfully registered");
         } else if (split[0].equals("login")) {
             String username = split[1].split(" ")[0];
             String password = split[1].split(" ")[1];
             ResultSet results  = session.execute(
-                    "SELECT * FROM users WHERE username = " + username);
+                    "SELECT username, password FROM users WHERE username = '" + username+"';");
             if(results.one().getString("password").equals(password)) {
                 user = username;
+                System.out.println("Hello, " + user + " !");
             } else {
                 System.out.println("Wrong password");
             }
@@ -70,14 +73,18 @@ public class SimpleClient {
             if (user != null) { 
                 String tofollow = split[1];
                 Date now = new Date();
+                SimpleDateFormat format = new SimpleDateFormat("yyyy-mm-dd HH:mm");
+                String date = format.format(now);
+                
                 session.execute(
-                        "INSERT INTO friends (username, friend, since) VALUES"+
-                                user + "," + tofollow + "," + now +")"
+                        "INSERT INTO friends (username, friend, since) VALUES ('"+
+                                user + "','" + tofollow + "','" + date +"');"
                 );
                 session.execute(
-                        "INSERT INTO followers (username, friend, since) VALUES"+
-                                user + "," + tofollow + "," + now +")"
+                        "INSERT INTO followers (username, follower, since) VALUES ('"+
+                                user + "','" + tofollow + "','" + date +"');"
                 );
+                System.out.println("Successfully follow " + tofollow);
             } else {
                 System.out.println("Please login first");
             }
@@ -89,16 +96,16 @@ public class SimpleClient {
                 //TODO : bedain timeuuid & uuid
                 UUID tweetuuid = UUID.fromString("");
                 session.execute(
-                        "INSERT INTO tweets (tweet_id, username, body) VALUES"+
-                                tweetuuid + "," + user + "," + tweetBody +")"
+                        "INSERT INTO tweets (tweet_id, username, body) VALUES ('"+
+                                tweetuuid + "','" + user + "','" + tweetBody +"');"
                 );
                 session.execute(
-                        "INSERT INTO userline (username, time, tweet_id) VALUES"+
-                                user + "," + timeuuid + "," + tweetuuid +")"
+                        "INSERT INTO userline (username, time, tweet_id) VALUES ('"+
+                                user + "','" + timeuuid + "','" + tweetuuid +"');"
                 );
                 session.execute(
-                        "INSERT INTO timeline (username, time, tweet_id) VALUES"+
-                                user + "," + timeuuid + "," + tweetuuid +")"
+                        "INSERT INTO timeline (username, time, tweet_id) VALUES ('"+
+                                user + "','" + timeuuid + "','" + tweetuuid +"');"
                 );
             } else {
                 System.out.println("Please login first");
@@ -109,7 +116,7 @@ public class SimpleClient {
                 String toView = split[1];
                 ResultSet results  = session.execute(
                     "SELECT username, body FROM tweets WHERE username = "
-                            + toView);
+                            + toView+";");
                 for(Row row : results) {
                     System.out.println(row.getString("username")+" : "+
                             row.getString("body"));
@@ -123,7 +130,7 @@ public class SimpleClient {
                 ResultSet results  = session.execute(
                     "SELECT username, body FROM tweets t JOIN timeline u ON"
                             + "t.tweet_id=u.tweet_id WHERE t.username = "
-                            + user);
+                            + user+";");
                 for(Row row : results) {
                     System.out.println(row.getString("username")+" : "+
                             row.getString("body"));
@@ -132,11 +139,11 @@ public class SimpleClient {
                 System.out.println("Please login first");
             }
         } else if (split[0].equalsIgnoreCase("exit")){
-            stat = false;
+            exit = true;
         } else {
             printUsage();
         }
-        return stat;
+        return exit;
     }
     
     public void printUsage() {
@@ -152,12 +159,13 @@ public class SimpleClient {
     
     public static void main (String[] args) {
         SimpleClient client = new SimpleClient();
-        client.connect("127.0.0.1");
+        client.connect("167.205.35.19");
         client.user = null;
         boolean exit = false;
         client.printUsage();
         Scanner in = new Scanner(System.in);
         do {
+            System.out.print("> ");
             String command = in.nextLine();
             exit = client.handleCommand(command);
         } while (!exit);
